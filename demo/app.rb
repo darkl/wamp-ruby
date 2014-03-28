@@ -38,6 +38,7 @@ end
 
 App.bind(:call) do |client, request_id, options, procedure, arguments, arguments_keywords|
   log "#{client.id} called Call with parameters #{request_id}, #{options}, #{procedure}, #{arguments}, #{arguments_keywords}"
+  client.result(request_id, options, [], [procedure])
 end
 
 App.bind(:cancel) do |client, request_id, options|

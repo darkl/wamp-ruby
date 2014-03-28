@@ -45,6 +45,10 @@ pkg
 # For redcar:
 .redcar
 
+# For idea:
+.idea/
+.idea/*
+
 # For rubinius:
 *.rbc
 /tmp
