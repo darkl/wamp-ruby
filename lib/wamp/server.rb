@@ -21,7 +21,7 @@ module WAMP
       lambda do |env|
         Faye::WebSocket.load_adapter('thin')
         if Faye::WebSocket.websocket?(env)
-          ws = Faye::WebSocket.new(env, ['wamp2.json'], ping: 25)
+          ws = Faye::WebSocket.new(env, ['wamp.2.json'], ping: 25)
 
           ws.onopen    = lambda { |event| handle_open(ws, event) }
           ws.onmessage = lambda { |event| handle_message(ws, event) }
