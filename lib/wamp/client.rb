@@ -1,4 +1,4 @@
-require 'faye/websocket'
+﻿require 'faye/websocket'
 require 'json'
 require 'eventmachine'
 
@@ -29,7 +29,7 @@ module WAMP
     end
 
     def available_bindings
-      [:connect, :challenge, :welcome, :goodbye, :heartbeat, :error, :registered, :unregistered, :invocation, :interrupt, :result, :published, :subscribed, :unsubscribed, :event, :disconnect]
+      [:connect, :challenge, :welcome, :abort, :goodbye, :heartbeat, :error, :registered, :unregistered, :invocation, :interrupt, :result, :published, :subscribed, :unsubscribed, :event, :disconnect]
     end
 
     def start
@@ -42,12 +42,16 @@ module WAMP
       end
     end
 
+    def abort(details, reason)
+      @websocket.send @protocol.abort(details, reason).to_json
+    end
+
     def authenticate(signature, extra)
       @websocket.send @protocol.authenticate(signature, extra).to_json
     end
 
-    def goodbye(reason, details)
-      @websocket.send @protocol.goodbye(reason, details).to_json
+    def goodbye(details, reason)
+      @websocket.send @protocol.goodbye(details, reason).to_json
     end
 
     def heartbeat(incoming_seq, outgoing_seq, discard = nil)
@@ -115,6 +119,8 @@ module WAMP
           handle_challenge(data)
         when :WELCOME
           handle_welcome(data)
+        when :ABORT
+          handle_abort(data)
         when :GOODBYE
           handle_goodbye(data)
         when :HEARTBEAT
@@ -160,12 +166,20 @@ module WAMP
       trigger(:welcome, session, details)
     end
 
-    # Handle a goodbye message from a client
-    # GOODBYE data structure [GOODBYE, reason, details]
-    def handle_goodbye(data)
-      reason, details = data
+    # Handle a abort message from a client
+    # ABORT data structure [ABORT, details, reason]
+    def handle_abort(data)
+      details, reason = data
 
-      trigger(:goodbye, reason, details)
+      trigger(:abort, details, reason)
+    end
+
+    # Handle a goodbye message from a client
+    # GOODBYE data structure [GOODBYE, details, reason]
+    def handle_goodbye(data)
+      details, reason = data
+
+      trigger(:goodbye, details, reason)
     end
 
     # Handle a heartbeat message from a client

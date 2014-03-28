@@ -1,4 +1,4 @@
-require 'faye/websocket'
+﻿require 'faye/websocket'
 require 'json'
 
 module WAMP
@@ -14,7 +14,7 @@ module WAMP
     end
 
     def available_bindings
-      [:hello, :authenticate, :goodbye, :heartbeat, :register, :unregister, :call, :cancel, :yield, :error, :publish, :subscribe, :unsubscribe, :connect, :disconnect]
+      [:hello, :abort, :authenticate, :goodbye, :heartbeat, :register, :unregister, :call, :cancel, :yield, :error, :publish, :subscribe, :unsubscribe, :connect, :disconnect]
     end
 
     def start
@@ -59,6 +59,8 @@ module WAMP
       case WAMP::MessageType[msg_type]
         when :HELLO
           handle_hello(client, data)
+        when :ABORT
+          handle_abort(client, data)
         when :AUTHENTICATE
           handle_authenticate(client, data)
         when :GOODBYE
@@ -97,6 +99,14 @@ module WAMP
       trigger(:hello, client, realm, details)
     end
 
+    # Handle a abort message from a client
+    # ABORT data structure [ABORT, details, reason]
+    def handle_abort(client, data)
+      details, reason = data
+
+      trigger(:abort, client, details, reason)
+    end
+
     # Handle a authenticate message from a client
     # AUTHENTICATE data structure [AUTHENTICATE, signature, extra]
     def handle_authenticate(client, data)
@@ -106,11 +116,11 @@ module WAMP
     end
 
     # Handle a goodbye message from a client
-    # GOODBYE data structure [GOODBYE, reason, details]
+    # GOODBYE data structure [GOODBYE, details, reason]
     def handle_goodbye(client, data)
-      reason, details = data
+      details, reason = data
 
-      trigger(:goodbye, client, reason, details)
+      trigger(:goodbye, client, details, reason)
     end
 
     # Handle a heartbeat message from a client

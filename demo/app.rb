@@ -1,4 +1,4 @@
-require '../lib/wamp'
+﻿require '../lib/wamp'
 require 'json'
 require 'pry'
 
@@ -16,12 +16,16 @@ App.bind(:hello) do |client, realm, details|
   log "#{client.id} called Hello with parameters #{realm}, #{details}"
 end
 
+App.bind(:abort) do |client, details, reason|
+  log "#{client.id} called Abort with parameters #{details}, #{reason}"
+end
+
 App.bind(:authenticate) do |client, signature, extra|
   log "#{client.id} called Authenticate with parameters #{signature}, #{extra}"
 end
 
-App.bind(:goodbye) do |client, reason, details|
-  log "#{client.id} called Goodbye with parameters #{reason}, #{details}"
+App.bind(:goodbye) do |client, details, reason|
+  log "#{client.id} called Goodbye with parameters #{details}, #{reason}"
 end
 
 App.bind(:heartbeat) do |client, incoming_seq, outgoing_seq, discard|
@@ -38,7 +42,6 @@ end
 
 App.bind(:call) do |client, request_id, options, procedure, arguments, arguments_keywords|
   log "#{client.id} called Call with parameters #{request_id}, #{options}, #{procedure}, #{arguments}, #{arguments_keywords}"
-  client.result(request_id, options, [], [procedure])
 end
 
 App.bind(:cancel) do |client, request_id, options|

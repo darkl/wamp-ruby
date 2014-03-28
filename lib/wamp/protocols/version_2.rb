@@ -1,4 +1,4 @@
-require 'json'
+﻿require 'json'
 
 module WAMP::Protocols
 
@@ -17,8 +17,12 @@ module WAMP::Protocols
       [type[:WELCOME], session, details]
     end
 
-    def goodbye(reason, details)
-      [type[:GOODBYE], reason, details]
+    def abort(details, reason)
+      [type[:ABORT], details, reason]
+    end
+
+    def goodbye(details, reason)
+      [type[:GOODBYE], details, reason]
     end
 
     def heartbeat(incoming_seq, outgoing_seq, discard = nil)

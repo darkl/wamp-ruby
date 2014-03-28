@@ -1,4 +1,4 @@
-module WAMP::MessageType
+﻿module WAMP::MessageType
   # Message types with ID per the WAMP Specification located at
   # http://wamp.ws/spec#message_types
 

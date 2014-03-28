@@ -1,4 +1,4 @@
-require 'json'
+﻿require 'json'
 
 module WAMP
   class JsonClient
@@ -7,7 +7,7 @@ module WAMP
     def initialize(id, websocket)
       @id        = id
       @websocket = websocket
-      @protocol  = WAMP::Protocols::Version2.new
+      @protocol = WAMP::Protocols::Version2.new
     end
 
     def challenge(challenge, extra)
@@ -18,16 +18,20 @@ module WAMP
       @websocket.send @protocol.welcome(session, details).to_json
     end
 
-    def goodbye(reason, details)
-      @websocket.send @protocol.goodbye(reason, details).to_json
+    def abort(details, reason)
+      @websocket.send @protocol.abort(details, reason).to_json
+    end
+
+    def goodbye(details, reason)
+      @websocket.send @protocol.goodbye(details, reason).to_json
     end
 
     def heartbeat(incoming_seq, outgoing_seq, discard = nil)
       @websocket.send @protocol.heartbeat(incoming_seq, outgoing_seq, discard).to_json
     end
 
-    def error(reqest_type, request_id, details, error, arguments = nil, arguments_keywords = nil)
-      @websocket.send @protocol.error(reqest_type, request_id, details, error, arguments, arguments_keywords).to_json
+    def error(request_type, request_id, details, error, arguments = nil, arguments_keywords = nil)
+      @websocket.send @protocol.error(request_type, request_id, details, error, arguments, arguments_keywords).to_json
     end
 
     def registered(request_id, registration_id)
@@ -65,5 +69,6 @@ module WAMP
     def event(subscription_id, publication_id, details, arguments = nil, arguments_keywords = nil)
       @websocket.send @protocol.event(subscription_id, publication_id, details, arguments, arguments_keywords).to_json
     end
+
   end
 end
