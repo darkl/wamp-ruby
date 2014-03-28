@@ -29,7 +29,7 @@ module WAMP
     end
 
     def available_bindings
-      [:connect, :welcome, :call_result, :call_error, :event, :disconnect]
+      [:connect, :challenge, :welcome, :goodbye, :heartbeat, :error, :registered, :unregistered, :invocation, :interrupt, :result, :published, :subscribed, :unsubscribed, :event, :disconnect]
     end
 
     def start
@@ -42,36 +42,63 @@ module WAMP
       end
     end
 
-    def prefix(prefix, topic_uri)
-      socket.send [WAMP::MessageType[:PREFIX], prefix, topic_uri].to_json
-
-      prefixes[prefix] = topic_uri
+    def authenticate(signature, extra)
+      @websocket.send @protocol.authenticate(signature, extra).to_json
     end
 
-    def subscribe(topic_uri)
-      socket.send [WAMP::MessageType[:SUBSCRIBE], topic_uri].to_json
-
-      topics << topic_uri
+    def goodbye(reason, details)
+      @websocket.send @protocol.goodbye(reason, details).to_json
     end
 
-    def unsubscribe(topic_uri)
-      socket.send [WAMP::MessageType[:UNSUBSCRIBE], topic_uri].to_json
-
-      topics.delete(topic_uri)
+    def heartbeat(incoming_seq, outgoing_seq, discard = nil)
+      @websocket.send @protocol.heartbeat(incoming_seq, outgoing_seq, discard).to_json
     end
 
-    def publish(topic_uri, payload, options = {})
-      exclude = options.fetch(:exclude, nil)
-      include = options.fetch(:include, nil)
+    def register(request_id, options, procedure)
+      @websocket.send @protocol.register(request_id, options, procedure).to_json
+    end
 
-      socket.send [WAMP::MessageType[:PUBLISH], topic_uri, payload, exclude, include].to_json
+    def unregister(request_id, registration_id)
+      @websocket.send @protocol.unregister(request_id, registration_id).to_json
+    end
+
+    def call(request_id, options, procedure, arguments = nil, arguments_keywords = nil)
+      @websocket.send @protocol.call(request_id, options, procedure, arguments, arguments_keywords).to_json
+    end
+
+    def cancel(request_id, options)
+      @websocket.send @protocol.cancel(request_id, options).to_json
+    end
+
+    def yield(request_id, options, arguments = nil, arguments_keywords = nil)
+      @websocket.send @protocol.yield(request_id, options, arguments, arguments_keywords).to_json
+    end
+
+    def error(request_type, request_id, details, error, arguments = nil, arguments_keywords = nil)
+      @websocket.send @protocol.error(request_type, request_id, details, error, arguments, arguments_keywords).to_json
+    end
+
+    def publish(request_id, options, topic_uri, arguments = nil, argument_keywords = nil)
+      @websocket.send @protocol.publish(request_id, options, topic_uri, arguments, argument_keywords).to_json
+    end
+
+    def subscribe(request_id, options, topic_uri)
+      @websocket.send @protocol.subscribe(request_id, options, topic_uri).to_json
+    end
+
+    def unsubscribe(request_id, subscription_id)
+      @websocket.send @protocol.unsubscribe(request_id, subscription_id).to_json
+    end
+
+    def hello(realm, details)
+      @websocket.send @protocol.hello(realm, details).to_json
     end
 
     def stop
       EM.stop
     end
 
-  private
+    private
 
     def handle_open(websocket, event)
       @socket = websocket
@@ -79,37 +106,154 @@ module WAMP
       trigger(:connect, self)
     end
 
-    def handle_message(event)
-      parsed_msg = JSON.parse(event.data)
-      msg_type   = parsed_msg[0]
+    def handle_message(data)
+      data     = JSON.parse(event.data)
+      msg_type = data.shift
 
       case WAMP::MessageType[msg_type]
-      when :WELCOME
-        handle_welcome(parsed_msg)
-      when :EVENT
-        handle_event(parsed_msg)
-      else
-        handle_unknown(parsed_msg)
+        when :CHALLENGE
+          handle_challenge(data)
+        when :WELCOME
+          handle_welcome(data)
+        when :GOODBYE
+          handle_goodbye(data)
+        when :HEARTBEAT
+          handle_heartbeat(data)
+        when :ERROR
+          handle_error(data)
+        when :REGISTERED
+          handle_registered(data)
+        when :UNREGISTERED
+          handle_unregistered(data)
+        when :INVOCATION
+          handle_invocation(data)
+        when :INTERRUPT
+          handle_interrupt(data)
+        when :RESULT
+          handle_result(data)
+        when :PUBLISHED
+          handle_published(data)
+        when :SUBSCRIBED
+          handle_subscribed(data)
+        when :UNSUBSCRIBED
+          handle_unsubscribed(data)
+        when :EVENT
+          handle_event(data)
+        else
+          handle_unknown(data)
       end
     end
 
-    # Handle welcome message from server
-    # WELCOME data structure [0, CLIENT_ID, WAMP_PROTOCOL, SERVER_IDENTITY]
-    def handle_welcome(data)
-      @id            = data[1]
-      @wamp_protocol = data[2]
-      @server_ident  = data[3]
+    # Handle a challenge message from a client
+    # CHALLENGE data structure [CHALLENGE, challenge, extra]
+    def handle_challenge(data)
+      challenge, extra = data
 
-      trigger(:welcome, self)
+      trigger(:challenge, challenge, extra)
     end
 
-    # Handle an event message from server
-    # EVENT data structure [8, TOPIC, PAYLOAD]
-    def handle_event(data)
-      topic   = data[1]
-      payload = data[2]
+    # Handle a welcome message from a client
+    # WELCOME data structure [WELCOME, session, details]
+    def handle_welcome(data)
+      session, details = data
 
-      trigger(:event, self, topic, payload)
+      trigger(:welcome, session, details)
+    end
+
+    # Handle a goodbye message from a client
+    # GOODBYE data structure [GOODBYE, reason, details]
+    def handle_goodbye(data)
+      reason, details = data
+
+      trigger(:goodbye, reason, details)
+    end
+
+    # Handle a heartbeat message from a client
+    # HEARTBEAT data structure [HEARTBEAT, incoming_seq, outgoing_seq, discard]
+    def handle_heartbeat(data)
+      incoming_seq, outgoing_seq, discard = data
+
+      trigger(:heartbeat, incoming_seq, outgoing_seq, discard)
+    end
+
+    # Handle a error message from a client
+    # ERROR data structure [ERROR, request_type, request_id, details, error, arguments, arguments_keywords]
+    def handle_error(data)
+      request_type, request_id, details, error, arguments, arguments_keywords = data
+
+      trigger(:error, request_type, request_id, details, error, arguments, arguments_keywords)
+    end
+
+    # Handle a registered message from a client
+    # REGISTERED data structure [REGISTERED, request_id, registration_id]
+    def handle_registered(data)
+      request_id, registration_id = data
+
+      trigger(:registered, request_id, registration_id)
+    end
+
+    # Handle a unregistered message from a client
+    # UNREGISTERED data structure [UNREGISTERED, request_id]
+    def handle_unregistered(data)
+      request_id = data
+
+      trigger(:unregistered, request_id)
+    end
+
+    # Handle a invocation message from a client
+    # INVOCATION data structure [INVOCATION, request_id, registration_id, details, arguments, arguments_keywords]
+    def handle_invocation(data)
+      request_id, registration_id, details, arguments, arguments_keywords = data
+
+      trigger(:invocation, request_id, registration_id, details, arguments, arguments_keywords)
+    end
+
+    # Handle a interrupt message from a client
+    # INTERRUPT data structure [INTERRUPT, request_id, options]
+    def handle_interrupt(data)
+      request_id, options = data
+
+      trigger(:interrupt, request_id, options)
+    end
+
+    # Handle a result message from a client
+    # RESULT data structure [RESULT, request_id, details, arguments, arguments_keywords]
+    def handle_result(data)
+      request_id, details, arguments, arguments_keywords = data
+
+      trigger(:result, request_id, details, arguments, arguments_keywords)
+    end
+
+    # Handle a published message from a client
+    # PUBLISHED data structure [PUBLISHED, request_id, publication_id]
+    def handle_published(data)
+      request_id, publication_id = data
+
+      trigger(:published, request_id, publication_id)
+    end
+
+    # Handle a subscribed message from a client
+    # SUBSCRIBED data structure [SUBSCRIBED, request_id, subscription_id]
+    def handle_subscribed(data)
+      request_id, subscription_id = data
+
+      trigger(:subscribed, request_id, subscription_id)
+    end
+
+    # Handle a unsubscribed message from a client
+    # UNSUBSCRIBED data structure [UNSUBSCRIBED, request_id, subscription_id]
+    def handle_unsubscribed(data)
+      request_id, subscription_id = data
+
+      trigger(:unsubscribed, request_id, subscription_id)
+    end
+
+    # Handle a event message from a client
+    # EVENT data structure [EVENT, subscription_id, publication_id, details, arguments, arguments_keywords]
+    def handle_event(data)
+      subscription_id, publication_id, details, arguments, arguments_keywords = data
+
+      trigger(:event, subscription_id, publication_id, details, arguments, arguments_keywords)
     end
 
     def handle_unknown(data)

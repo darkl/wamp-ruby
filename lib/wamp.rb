@@ -8,17 +8,15 @@ module WAMP
   autoload :Bindable,    File.join(ROOT, "wamp", "bindable")
   autoload :Client,      File.join(ROOT, "wamp", "client")
   autoload :Server,      File.join(ROOT, "wamp", "server")
-  autoload :Socket,      File.join(ROOT, "wamp", "socket")
-  autoload :Topic,       File.join(ROOT, "wamp", "topic")
+  autoload :JsonClient,      File.join(ROOT, "wamp", "json_client")
   autoload :MessageType, File.join(ROOT, "wamp", "message_type")
 
   module Engines
-    autoload :Memory, File.join(ROOT, "wamp", "engines", "memory")
-    autoload :Redis,  File.join(ROOT, "wamp", "engines", "redis")
+    autoload :ClientContainer, File.join(ROOT, "wamp", "engines", "client_container")
   end
 
   module Protocols
-    autoload :Version1, File.join(ROOT, "wamp", "protocols", "version_1")
+    autoload :Version2, File.join(ROOT, "wamp", "protocols", "version_2")
   end
 
   class << self
